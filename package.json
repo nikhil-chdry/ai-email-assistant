@@ -1,0 +1,24 @@
+{
+  "name": "ai-email-assistant",
+  "version": "1.0.0",
+  "description": "Local MCP server for a personal recruiter outreach workflow.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "dotenv": "^18.0.10",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.12"
+  }
+}
