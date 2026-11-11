@@ -3,6 +3,7 @@ node_modules/
 credentials/
 data/*.sqlite
 data/*.sqlite-*
+data/*.csv
 uploads/*
 !uploads/.gitkeep
 *.log
