@@ -51,7 +51,7 @@ afterEach(async () => {
 });
 
 describe("AI Email Assistant MCP server", () => {
-  it("discovers Phase 2 profile tools and returns status", async () => {
+  it("discovers Phase 4 tools and returns status", async () => {
     const { server, client } = await createTestApplication();
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
@@ -60,10 +60,23 @@ describe("AI Email Assistant MCP server", () => {
       "update_my_profile",
       "upload_resume",
       "get_resume_information",
+      "create_recruiter",
+      "import_recruiters",
+      "list_recruiters",
+      "search_recruiters",
+      "filter_recruiters",
+      "validate_contacts",
+      "update_recruiter",
+      "delete_recruiter",
+      "generate_email",
+      "save_email_draft",
+      "get_email_drafts",
+      "update_email_draft",
+      "delete_email_draft",
     ]));
 
     const result = await client.callTool({ name: "get_system_status", arguments: {} });
-    expect(result.structuredContent).toMatchObject({ status: "ready", phase: 2, transport: "stdio" });
+    expect(result.structuredContent).toMatchObject({ status: "ready", phase: 4, transport: "stdio" });
 
     await client.close();
     await server.close();
@@ -108,6 +121,118 @@ describe("AI Email Assistant MCP server", () => {
       arguments: { sourcePath: resumePath, confirmReplace: true },
     });
     expect(confirmedReplacement.isError).not.toBe(true);
+
+    await client.close();
+    await server.close();
+    await server.closeDatabase();
+  });
+
+  it("imports and manages recruiters without claiming deliverability verification", async () => {
+    const { server, client } = await createTestApplication();
+    const temporaryDirectory = temporaryDirectories.at(-1);
+    const manual = await client.callTool({
+      name: "create_recruiter",
+      arguments: { name: "Lina Das", email: "lina@beta.example", company: "Beta Systems", jobRole: "Full Stack Developer" },
+    });
+    expect(manual.structuredContent).toMatchObject({ name: "Lina Das", emailFormatValid: true });
+
+    const csvPath = path.join(temporaryDirectory, "recruiters.csv");
+    await fs.writeFile(csvPath, [
+      "name,email,company,designation,job_role,company_website,source",
+      "Asha Verma,asha@acme.example,Acme Labs,Technical Recruiter,SDE Intern,https://acme.example,public careers page",
+      "Ravi Shah,not-an-email,Acme Labs,Recruiter,Backend Developer,https://acme.example,conference contact",
+      "Duplicate Asha,ASHA@ACME.EXAMPLE,Acme Labs,Recruiter,SDE Intern,https://acme.example,duplicate row",
+    ].join("\n"));
+
+    const dryRun = await client.callTool({ name: "import_recruiters", arguments: { sourcePath: csvPath, dryRun: true } });
+    expect(dryRun.structuredContent).toMatchObject({ dryRun: true, wouldImport: 2, imported: 0 });
+    expect(dryRun.structuredContent.rejected).toHaveLength(1);
+
+    const imported = await client.callTool({ name: "import_recruiters", arguments: { sourcePath: csvPath } });
+    expect(imported.structuredContent).toMatchObject({ imported: 2, invalidEmailFormatCount: 1 });
+    expect(imported.structuredContent.note).toContain("do not verify");
+
+    const filtered = await client.callTool({ name: "filter_recruiters", arguments: { company: "Acme" } });
+    expect(filtered.structuredContent.total).toBe(2);
+    const asha = filtered.structuredContent.recruiters.find((recruiter) => recruiter.email === "asha@acme.example");
+
+    const validation = await client.callTool({ name: "validate_contacts", arguments: { recruiterIds: [asha.id] } });
+    expect(validation.structuredContent.contacts[0]).toMatchObject({
+      emailFormatValid: true,
+      emailVerification: "format-only; deliverability is not verified",
+    });
+
+    const updated = await client.callTool({
+      name: "update_recruiter",
+      arguments: { id: asha.id, outreachStatus: "contacted" },
+    });
+    expect(updated.structuredContent.outreachStatus).toBe("contacted");
+
+    const deleted = await client.callTool({
+      name: "delete_recruiter",
+      arguments: { id: asha.id, confirmDelete: true },
+    });
+    expect(deleted.structuredContent).toEqual({ deleted: true, id: asha.id });
+
+    await client.close();
+    await server.close();
+    await server.closeDatabase();
+  });
+
+  it("prepares client-side email generation and manages unsent drafts", async () => {
+    const { server, client } = await createTestApplication();
+    const recruiter = await client.callTool({
+      name: "create_recruiter",
+      arguments: {
+        name: "Maya Rao",
+        email: "maya@acme.example",
+        company: "Acme Labs",
+        designation: "Engineering Recruiter",
+        jobRole: "SDE Intern",
+        publicProfessionalInfo: "Hiring for the platform engineering team.",
+      },
+    });
+
+    const brief = await client.callTool({
+      name: "generate_email",
+      arguments: {
+        recruiterId: recruiter.structuredContent.id,
+        template: "sde_intern",
+        companyInformation: "Acme's public internship page highlights platform engineering.",
+      },
+    });
+    expect(brief.structuredContent).toMatchObject({
+      mode: "client-side AI writing required",
+      recruiter: { name: "Maya Rao", company: "Acme Labs" },
+    });
+    expect(brief.structuredContent.instructions.join(" ")).toContain("Do not call a paid AI API");
+
+    const body = Array.from({ length: 110 }, (_, index) => `word${index + 1}`).join(" ");
+    const saved = await client.callTool({
+      name: "save_email_draft",
+      arguments: {
+        recruiterId: recruiter.structuredContent.id,
+        template: "sde_intern",
+        subject: "Interest in SDE internship opportunities at Acme Labs",
+        body,
+      },
+    });
+    expect(saved.structuredContent).toMatchObject({ status: "draft", wordCount: 110 });
+
+    const drafts = await client.callTool({ name: "get_email_drafts", arguments: { recruiterId: recruiter.structuredContent.id } });
+    expect(drafts.structuredContent.total).toBe(1);
+
+    const updated = await client.callTool({
+      name: "update_email_draft",
+      arguments: { id: saved.structuredContent.id, subject: "SDE Intern inquiry — Acme Labs" },
+    });
+    expect(updated.structuredContent.subject).toBe("SDE Intern inquiry — Acme Labs");
+
+    const deleted = await client.callTool({
+      name: "delete_email_draft",
+      arguments: { id: saved.structuredContent.id, confirmDelete: true },
+    });
+    expect(deleted.structuredContent).toEqual({ deleted: true, id: saved.structuredContent.id });
 
     await client.close();
     await server.close();

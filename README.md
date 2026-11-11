@@ -1,39 +1,60 @@
 # AI Email Assistant
 
-Local, zero-cost MCP backend for recruiter outreach. AI writing is performed by Claude Desktop or Google Antigravity; this backend will provide local data, validation, Gmail, and campaign tools as later phases are completed.
+A free, local MCP backend for managing recruiter outreach. It is designed for use from Claude Desktop and Google Antigravity, which perform the AI reasoning and writing. The backend handles deterministic local data operations, validation, and draft storage.
 
-## Phase 2: MCP foundation and candidate profile
+This project does not use Anthropic APIs, Gemini Developer APIs, paid hosting, paid databases, or paid recruiter-discovery services.
 
-The server uses the official MCP SDK and the stdio transport. It currently exposes safe local tools:
+## Current scope: Phase 4
 
-- `get_system_status` — returns server health and the Phase 2 capability set.
-- `get_my_profile` — returns the candidate profile and whether a resume is available.
-- `update_my_profile` — updates profile fields with strict input validation.
-- `upload_resume` — imports a selected PDF, extracts its text locally, and requires `confirmReplace: true` before replacing an existing resume.
-- `get_resume_information` — returns active-resume metadata and extracted text, without exposing its local storage path.
+The following phases are complete:
 
-Your initial profile is stored as user-provided and unverified. The active uploaded resume becomes the primary source for professional claims in later phases. The local SQLite database is created at `data/ai-email-assistant.sqlite`; it remains ignored by Git.
+1. MCP stdio server foundation.
+2. Local SQLite candidate profile and PDF-resume management.
+3. Recruiter CSV import and local contact management.
+4. Client-side AI email-generation briefs and unsent draft management.
 
-No email, Gmail, recruiter, or campaign operations are active yet.
+Gmail OAuth, sending, campaigns, reply detection, and follow-ups are deliberately not implemented yet. At this stage, the server cannot send an email.
+
+## Architecture
+
+```text
+Claude Desktop / Google Antigravity
+                │ MCP over stdio
+                ▼
+      Local Node.js MCP server
+         ├── SQLite database: data/ai-email-assistant.sqlite
+         ├── Protected resume storage: uploads/resumes/
+         └── Local tools for profile, recruiters, and drafts
+```
+
+All application diagnostics go to stderr. Stdout is reserved exclusively for MCP JSON-RPC communication.
 
 ## Requirements
 
 - Node.js 20.19.3 or newer
 - npm 10.8.2 or newer
+- Claude Desktop and/or Google Antigravity with local stdio MCP support
 
-## Install and verify
+## Install and test
 
 ```powershell
 npm install
 npm test
+```
+
+Start the server manually only for diagnostics:
+
+```powershell
 npm start
 ```
 
-`npm start` intentionally keeps running while an MCP client is connected. Diagnostic messages go to stderr only; stdout is reserved for MCP JSON-RPC.
+An MCP client normally starts the server itself using the configuration below.
 
-## Claude Desktop configuration
+## Connect an MCP client
 
-Open Claude Desktop's **Settings → Developer → Edit Config** and add this server under `mcpServers`. Replace the path if the project is located elsewhere.
+### Claude Desktop
+
+Open **Settings → Developer → Edit Config**, then add the server under `mcpServers`. Update the path if you move this project.
 
 ```json
 {
@@ -46,11 +67,11 @@ Open Claude Desktop's **Settings → Developer → Edit Config** and add this se
 }
 ```
 
-Restart Claude Desktop, then ask it to call `get_system_status`.
+Restart Claude Desktop and ask it to call `get_system_status`.
 
-## Google Antigravity configuration
+### Google Antigravity
 
-In Antigravity's MCP server settings, add a local **stdio** server with:
+In Antigravity's MCP settings, add a local **stdio** server:
 
 ```json
 {
@@ -59,12 +80,60 @@ In Antigravity's MCP server settings, add a local **stdio** server with:
 }
 ```
 
-Save/reconnect the server and call `get_system_status`. The exact settings screen may vary by Antigravity version; use its local-MCP/stdio server entry rather than an HTTP URL.
+Reconnect the server and call `get_system_status`. The exact settings interface may vary by Antigravity release; choose a local stdio server rather than an HTTP server.
 
-## Security notes
+## Available MCP tools
 
-- Do not commit `.env`, `credentials/`, uploaded resumes, SQLite databases, or logs.
-- The server does not log secrets and has no shell or arbitrary filesystem tool.
-- Resume imports accept only explicit, readable PDF paths, reject files over 10 MB, validate the PDF signature, and never return the protected storage path.
-- Future email sending will require explicit campaign approval.
+| Area | Tools |
+| --- | --- |
+| System | `get_system_status` |
+| Profile | `get_my_profile`, `update_my_profile`, `upload_resume`, `get_resume_information` |
+| Recruiters | `create_recruiter`, `import_recruiters`, `list_recruiters`, `search_recruiters`, `filter_recruiters`, `validate_contacts`, `update_recruiter`, `delete_recruiter` |
+| Email drafts | `generate_email`, `save_email_draft`, `get_email_drafts`, `update_email_draft`, `delete_email_draft` |
 
+Every tool validates its input with Zod and returns structured results.
+
+## Recommended workflow
+
+1. Call `get_my_profile` and correct any user-provided profile information.
+2. Call `upload_resume` with an explicit PDF path. The active resume becomes the primary evidence source for professional claims.
+3. Add contacts with `create_recruiter`, or use `import_recruiters` with `dryRun: true` before the real import.
+4. Use `validate_contacts` to check syntax. A syntax result is not deliverability or ownership verification.
+5. Call `generate_email` with a recruiter and one of these templates: `sde_intern`, `backend_developer`, `full_stack_developer`, `software_engineer`, `ml_engineer`, or `ai_engineer`.
+6. Have Claude Desktop or Antigravity write the email from the returned evidence and instructions. It must not invent experience, certifications, achievements, or company connections.
+7. Save the completed copy using `save_email_draft`. Draft operations are local only and never send an email.
+
+### Recruiter CSV format
+
+Required columns:
+
+```csv
+name,email
+```
+
+Optional columns: `company`, `designation`, `job_role`, `company_website`, `public_professional_info`, and `source`.
+
+Existing emails and duplicate emails within the same CSV are skipped case-insensitively. The importer never invents recruiter email addresses.
+
+## Data and security
+
+- SQLite data is local at `data/ai-email-assistant.sqlite` and is ignored by Git.
+- Resumes must be explicit local PDF paths, are limited to 10 MB, checked for a PDF signature, parsed locally, and copied to protected local storage.
+- Uploading a replacement resume requires `confirmReplace: true`.
+- Recruiter deletion and draft deletion require explicit confirmation.
+- Stored recruiter email checks are format-only; no tool claims an address is deliverable or owned by the recruiter.
+- No secrets, OAuth tokens, resume paths, or arbitrary shell/filesystem operations are exposed through MCP.
+- Never commit `.env`, `credentials/`, uploads, databases, or logs.
+
+## Quality checks
+
+```powershell
+npm test
+npm audit --omit=dev
+```
+
+The Phase 4 suite covers MCP discovery, stdout safety, profile management, PDF import, recruiter import and duplicate handling, format-only validation, and email draft lifecycle operations.
+
+## Next: Phase 5
+
+Phase 5 will add Google OAuth and Gmail connection status only. It will use the minimum scopes (`gmail.send` and `gmail.readonly`), store credentials locally, avoid passwords, and not send any outreach email until later phases add explicit campaign approval.

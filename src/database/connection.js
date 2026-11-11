@@ -3,8 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs from "sql.js";
 import { id as initialSchemaId, up as applyInitialSchema } from "./migrations/001-initial-schema.js";
+import { id as recruiterSchemaId, up as applyRecruiterSchema } from "./migrations/002-recruiters.js";
+import { id as emailDraftSchemaId, up as applyEmailDraftSchema } from "./migrations/003-email-drafts.js";
 
-const migrations = [{ id: initialSchemaId, up: applyInitialSchema }];
+const migrations = [
+  { id: initialSchemaId, up: applyInitialSchema },
+  { id: recruiterSchemaId, up: applyRecruiterSchema },
+  { id: emailDraftSchemaId, up: applyEmailDraftSchema },
+];
 
 export class LocalDatabase {
   constructor({ databasePath }) {
