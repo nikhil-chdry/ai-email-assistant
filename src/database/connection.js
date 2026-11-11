@@ -7,6 +7,8 @@ import { id as recruiterSchemaId, up as applyRecruiterSchema } from "./migration
 import { id as emailDraftSchemaId, up as applyEmailDraftSchema } from "./migrations/003-email-drafts.js";
 import { id as gmailTokensSchemaId, up as applyGmailTokensSchema } from "./migrations/004-gmail-tokens.js";
 import { id as sentEmailsSchemaId, up as applySentEmailsSchema } from "./migrations/005-sent-emails.js";
+import { id as campaignsSchemaId, up as applyCampaignsSchema } from "./migrations/006-campaigns.js";
+import { id as repliesSchemaId, up as applyRepliesSchema } from "./migrations/007-replies-and-followups.js";
 
 const migrations = [
   { id: initialSchemaId, up: applyInitialSchema },
@@ -14,6 +16,8 @@ const migrations = [
   { id: emailDraftSchemaId, up: applyEmailDraftSchema },
   { id: gmailTokensSchemaId, up: applyGmailTokensSchema },
   { id: sentEmailsSchemaId, up: applySentEmailsSchema },
+  { id: campaignsSchemaId, up: applyCampaignsSchema },
+  { id: repliesSchemaId, up: applyRepliesSchema },
 ];
 
 export class LocalDatabase {

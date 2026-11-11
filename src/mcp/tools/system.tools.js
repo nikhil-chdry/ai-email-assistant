@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const PHASE = 6;
+const PHASE = 10;
 
 export function registerSystemTools(server) {
   server.registerTool(
@@ -25,18 +25,23 @@ export function registerSystemTools(server) {
           emailDraftManagement: true,
           gmailIntegration: true,
           singleEmailSending: true,
-          campaignManagement: false,
-          followUps: false,
+          campaignManagement: true,
+          followUps: true,
+          securityHardened: true,
+          productionReady: true,
         },
         notes: [
-          "Phase 6 single email sending and resume attachment support is active (send_test_email).",
-          "Automated campaign execution and reply tracking are disabled until Phases 7 and 8.",
+          "Phase 10: Complete local AI Recruiter Outreach Assistant is production-ready.",
+          "All reasoning and writing performed by client AI (Claude Desktop / Antigravity); no paid AI APIs used.",
+          "Gmail operations run locally with minimum scopes and AES-256-GCM token encryption at rest.",
+          "All destructive actions require explicit confirmation flags.",
+          "Follow-up schedules operate locally only while this assistant server process is running.",
         ],
       },
       content: [
         {
           type: "text",
-          text: "AI Email Assistant MCP server is ready (Phase 6).",
+          text: "AI Email Assistant MCP server is ready (Phase 10 - Production Ready).",
         },
       ],
     }),
