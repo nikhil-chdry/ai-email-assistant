@@ -174,6 +174,51 @@ export class ProfileService {
     return { hasResume: true, ...this.#resumeMetadata(resume), extractedText: resume.extracted_text };
   }
 
+  /**
+   * Retrieves the active resume file content and metadata for internal attachment handling.
+   * Never expose the returned storage path or binary to MCP tool outputs.
+   *
+   * @returns {Promise<{ id: number, originalFilename: string, mimeType: string, sizeBytes: number, buffer: Buffer } | null>}
+   */
+  async getActiveResumeFile() {
+    const resume = this.database.get(
+      `SELECT resumes.* FROM candidate_profiles
+       JOIN resumes ON resumes.id = candidate_profiles.resume_id
+       WHERE candidate_profiles.id = 1`,
+    );
+    if (!resume) return null;
+
+    const baseDir = path.resolve(this.uploadsDirectory, "resumes");
+    const resolvedPath = path.resolve(baseDir, resume.stored_filename);
+
+    if (!resolvedPath.startsWith(baseDir + path.sep) && resolvedPath !== baseDir) {
+      throw new Error("Invalid resume storage path detected.");
+    }
+
+    let buffer;
+    try {
+      buffer = await fs.readFile(resolvedPath);
+    } catch {
+      throw new Error("Active resume file could not be read from storage.");
+    }
+
+    if (buffer.length === 0 || buffer.length > MAX_RESUME_BYTES) {
+      throw new Error("Active resume exceeds allowable size limit (10 MB).");
+    }
+
+    if (!buffer.subarray(0, pdfSignature.length).equals(pdfSignature)) {
+      throw new Error("Active resume file signature is invalid.");
+    }
+
+    return {
+      id: resume.id,
+      originalFilename: resume.original_filename,
+      mimeType: resume.mime_type,
+      sizeBytes: buffer.length,
+      buffer,
+    };
+  }
+
   #resumeMetadata(resume) {
     return {
       id: resume.id,

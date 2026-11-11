@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const PHASE = 4;
+const PHASE = 6;
 
 export function registerSystemTools(server) {
   server.registerTool(
@@ -23,22 +23,22 @@ export function registerSystemTools(server) {
           profileManagement: true,
           recruiterManagement: true,
           emailDraftManagement: true,
-          gmailIntegration: false,
+          gmailIntegration: true,
+          singleEmailSending: true,
           campaignManagement: false,
           followUps: false,
         },
         notes: [
-          "Phase 4 client-side AI email-draft workflows are active.",
-          "Gmail and campaign functionality are not implemented yet; no email can be sent.",
+          "Phase 6 single email sending and resume attachment support is active (send_test_email).",
+          "Automated campaign execution and reply tracking are disabled until Phases 7 and 8.",
         ],
       },
       content: [
         {
           type: "text",
-          text: "AI Email Assistant MCP server is ready (Phase 4).",
+          text: "AI Email Assistant MCP server is ready (Phase 6).",
         },
       ],
     }),
   );
 }
-

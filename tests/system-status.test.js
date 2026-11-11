@@ -51,7 +51,7 @@ afterEach(async () => {
 });
 
 describe("AI Email Assistant MCP server", () => {
-  it("discovers Phase 4 tools and returns status", async () => {
+  it("discovers Phase 6 tools and returns status", async () => {
     const { server, client } = await createTestApplication();
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
@@ -73,10 +73,13 @@ describe("AI Email Assistant MCP server", () => {
       "get_email_drafts",
       "update_email_draft",
       "delete_email_draft",
+      "connect_gmail",
+      "get_gmail_status",
+      "send_test_email",
     ]));
 
     const result = await client.callTool({ name: "get_system_status", arguments: {} });
-    expect(result.structuredContent).toMatchObject({ status: "ready", phase: 4, transport: "stdio" });
+    expect(result.structuredContent).toMatchObject({ status: "ready", phase: 6, transport: "stdio" });
 
     await client.close();
     await server.close();
