@@ -4,7 +4,7 @@ import { createMcpServer } from "./mcp/server.js";
 import { logError, logInfo } from "./utils/logger.js";
 
 async function main() {
-  const server = createMcpServer();
+  const server = await createMcpServer();
   const transport = new StdioServerTransport();
 
   await server.connect(transport);

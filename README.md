@@ -2,13 +2,19 @@
 
 Local, zero-cost MCP backend for recruiter outreach. AI writing is performed by Claude Desktop or Google Antigravity; this backend will provide local data, validation, Gmail, and campaign tools as later phases are completed.
 
-## Phase 1: MCP foundation
+## Phase 2: MCP foundation and candidate profile
 
-The server uses the official MCP SDK and the stdio transport. It currently exposes one safe tool:
+The server uses the official MCP SDK and the stdio transport. It currently exposes safe local tools:
 
-- `get_system_status` — returns server health and the Phase 1 capability set.
+- `get_system_status` — returns server health and the Phase 2 capability set.
+- `get_my_profile` — returns the candidate profile and whether a resume is available.
+- `update_my_profile` — updates profile fields with strict input validation.
+- `upload_resume` — imports a selected PDF, extracts its text locally, and requires `confirmReplace: true` before replacing an existing resume.
+- `get_resume_information` — returns active-resume metadata and extracted text, without exposing its local storage path.
 
-No email, Gmail, recruiter, resume, or database operations are active yet.
+Your initial profile is stored as user-provided and unverified. The active uploaded resume becomes the primary source for professional claims in later phases. The local SQLite database is created at `data/ai-email-assistant.sqlite`; it remains ignored by Git.
+
+No email, Gmail, recruiter, or campaign operations are active yet.
 
 ## Requirements
 
@@ -59,5 +65,6 @@ Save/reconnect the server and call `get_system_status`. The exact settings scree
 
 - Do not commit `.env`, `credentials/`, uploaded resumes, SQLite databases, or logs.
 - The server does not log secrets and has no shell or arbitrary filesystem tool.
+- Resume imports accept only explicit, readable PDF paths, reject files over 10 MB, validate the PDF signature, and never return the protected storage path.
 - Future email sending will require explicit campaign approval.
 

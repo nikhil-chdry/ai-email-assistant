@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const PHASE = 1;
+const PHASE = 2;
 
 export function registerSystemTools(server) {
   server.registerTool(
@@ -20,21 +20,21 @@ export function registerSystemTools(server) {
         transport: "stdio",
         capabilities: {
           systemStatus: true,
-          profileManagement: false,
+          profileManagement: true,
           recruiterManagement: false,
           gmailIntegration: false,
           campaignManagement: false,
           followUps: false,
         },
         notes: [
-          "Phase 1 foundation is active.",
-          "No Gmail account, recruiter data, resume, or campaign data is accessed in this phase.",
+          "Phase 2 local profile and resume storage is active.",
+          "Gmail, recruiter data, and campaign functionality are not implemented yet.",
         ],
       },
       content: [
         {
           type: "text",
-          text: "AI Email Assistant MCP server is ready (Phase 1).",
+          text: "AI Email Assistant MCP server is ready (Phase 2).",
         },
       ],
     }),
